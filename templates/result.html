@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+
+        <!-- ================= RESULT CARD ================= -->
+        <div class="card shadow-lg mb-4">
+            <div class="card-header text-center{% if score < 0.3 %} bg-success{% elif score < 0.7 %} bg-warning{% else %} bg-danger{% endif %} text-white">
+
+                <h3 class="mb-0">
+                    {% if score < 0.3 %}
+                        <i class="fas fa-check-circle me-2"></i>Job Appears Safe
+                    {% elif score < 0.7 %}
+                        <i class="fas fa-exclamation-triangle me-2"></i>Suspicious Activity Detected
+                    {% else %}
+                        <i class="fas fa-times-circle me-2"></i>High Fraud Risk
+                    {% endif %}
+                </h3>
+            </div>
+
+            <div class="card-body text-center">
+
+                <!-- ================= GAUGE ================= -->
+                <div class="mb-4">
+                    <div class="position-relative d-inline-block">
+                        <canvas id="riskGauge" width="200" height="200"></canvas>
+                        <div class="position-absolute top-50 start-50 translate-middle">
+                            <h2 class="mb-0{% if score < 0.3 %} text-success{% elif score < 0.7 %} text-warning{% else %} text-danger{% endif %}">
+                                {{ "%.1f"|format(score * 100) }}%
+                            </h2>
+                            <small class="text-muted">Risk Score</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= SCORE BREAKDOWN ================= -->
+                {% if ml_score is defined and web_risk_score is defined %}
+                <div class="card mt-4 border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>Risk Analysis Breakdown
+                        </h5>
+                    </div>
+                    <div class="card-body text-start">
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span><i class="fas fa-robot me-2"></i>ML Model Score (70%)</span>
+                                <strong>{{ "%.1f"|format(ml_score * 100) }}%</strong>
+                            </div>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar {% if ml_score < 0.3 %}bg-success{% elif ml_score < 0.7 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                     style="width: {{ ml_score * 100 }}%"></div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span><i class="fas fa-shield-alt me-2"></i>Pattern Detection Score (30%)</span>
+                                <strong>{{ "%.1f"|format(web_risk_score * 100) }}%</strong>
+                            </div>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar {% if web_risk_score < 0.3 %}bg-success{% elif web_risk_score < 0.7 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                     style="width: {{ web_risk_score * 100 }}%"></div>
+                            </div>
+                        </div>
+                        
+                        {% if risk_flags %}
+                        <div class="alert alert-warning mt-3 mb-0">
+                            <h6><i class="fas fa-exclamation-triangle me-2"></i>Suspicious Patterns Detected:</h6>
+                            <ul class="mb-0">
+                                {% for flag in risk_flags %}
+                                <li>{{ flag }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- ================= COMPANY VERIFICATION ================= -->
+                {% if company_info and company_info.company %}
+                <div class="card mt-4 border-info">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-building me-2"></i>Company Verification
+                        </h5>
+                    </div>
+
+                    <div class="card-body text-start">
+                        <p><strong>Detected Company:</strong> {{ company_info.company }}</p>
+
+                        {% if company_info.website %}
+                        <p>
+                            🌐 <a href="{{ company_info.website }}" target="_blank" class="text-decoration-none">
+                                Official Website
+                            </a>
+                        </p>
+                        {% else %}
+                        <p class="text-danger">❌ Official website not found</p>
+                        {% endif %}
+
+                        {% if company_info.linkedin %}
+                        <p>
+                            🔗 <a href="{{ company_info.linkedin }}" target="_blank" class="text-decoration-none">
+                                LinkedIn Page
+                            </a>
+                        </p>
+                        {% else %}
+                        <p class="text-danger">❌ LinkedIn page not found</p>
+                        {% endif %}
+
+                        <small class="text-muted">
+                            ⚠️ Always manually verify company legitimacy before applying.
+                        </small>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- ================= EXTRACTED ENTITIES ================= -->
+                {% if entities %}
+                <div class="card mt-4 border-secondary">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-search me-2"></i>Extracted Information
+                        </h5>
+                    </div>
+                    <div class="card-body text-start">
+                        <div class="row">
+                            {% if entities.organizations %}
+                            <div class="col-md-6 mb-3">
+                                <h6><i class="fas fa-building me-2"></i>Organizations</h6>
+                                <ul class="list-unstyled">
+                                    {% for org in entities.organizations[:3] %}
+                                    <li><span class="badge bg-primary">{{ org }}</span></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                            
+                            {% if entities.emails %}
+                            <div class="col-md-6 mb-3">
+                                <h6><i class="fas fa-envelope me-2"></i>Contact Emails</h6>
+                                <ul class="list-unstyled">
+                                    {% for email in entities.emails[:3] %}
+                                    <li><small class="text-muted">{{ email }}</small></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                            
+                            {% if entities.phones %}
+                            <div class="col-md-6 mb-3">
+                                <h6><i class="fas fa-phone me-2"></i>Phone Numbers</h6>
+                                <ul class="list-unstyled">
+                                    {% for phone in entities.phones[:3] %}
+                                    <li><small class="text-muted">{{ phone }}</small></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                            
+                            {% if entities.persons %}
+                            <div class="col-md-6 mb-3">
+                                <h6><i class="fas fa-user me-2"></i>Contact Persons</h6>
+                                <ul class="list-unstyled">
+                                    {% for person in entities.persons[:3] %}
+                                    <li><span class="badge bg-info">{{ person }}</span></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- ================= RISK LEVEL ================= -->
+                <div class="row my-4 text-center">
+                    <div class="col-md-4">
+                        <div class="p-3 rounded {% if score < 0.3 %}bg-success text-white{% else %}bg-light text-muted{% endif %}">
+                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                            <h6>Safe (0–30%)</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 rounded {% if score >= 0.3 and score < 0.7 %}bg-warning text-white{% else %}bg-light text-muted{% endif %}">
+                            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                            <h6>Suspicious (30–70%)</h6>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-3 rounded {% if score >= 0.7 %}bg-danger text-white{% else %}bg-light text-muted{% endif %}">
+                            <i class="fas fa-times-circle fa-2x mb-2"></i>
+                            <h6>High Risk (70–100%)</h6>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= RECOMMENDATION ================= -->
+                <div class="alert{% if score < 0.3 %} alert-success{% elif score < 0.7 %} alert-warning{% else %} alert-danger{% endif %}">
+                    
+                    <h5 class="alert-heading">
+                        <i class="fas fa-lightbulb me-2"></i>Recommendation
+                    </h5>
+
+                    {% if score < 0.3 %}
+                        This job appears legitimate. Still verify recruiters and avoid sharing sensitive data.
+                    {% elif score < 0.7 %}
+                        This job has suspicious signals. Research the company carefully before applying.
+                    {% else %}
+                        <strong>Warning:</strong> Strong indicators of fraud detected. Do not share personal or banking details.
+                    {% endif %}
+                </div>
+
+                <!-- ================= JOB PREVIEW ================= -->
+                <div class="card bg-light mt-3">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="fas fa-{% if source_type == 'image' %}image{% else %}file-alt{% endif %} me-2"></i>
+                            Analyzed Job Description
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small">{{ job_text }}...</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ================= ACTIONS ================= -->
+        <div class="text-center">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg me-3">
+                <i class="fas fa-search me-2"></i>Analyze Another Job
+            </a>
+            <button class="btn btn-outline-secondary btn-lg" onclick="window.print()">
+                <i class="fas fa-print me-2"></i>Print Report
+            </button>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ctx = document.getElementById('riskGauge').getContext('2d');
+const riskScore = {{ score|tojson }};
+
+new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+        datasets: [{
+            data: [riskScore * 100, 100 - (riskScore * 100)],
+            backgroundColor: [
+                riskScore < 0.3 ? '#28a745' : riskScore < 0.7 ? '#ffc107' : '#dc3545',
+                '#e9ecef'
+            ],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '70%',
+        plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+        }
+    }
+});
+</script>
+{% endblock %}
